@@ -1,7 +1,9 @@
 Argos
 =====
 
-Argos - framework for massive security assessment of worldwide public ip camsINTRODUCCION
+Argos - framework for massive security assessment of worldwide public ip cams
+
+INTRODUCCION
 ============
 
 este es el codigo fuente de "la maquina" v2.0
