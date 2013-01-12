@@ -1,0 +1,41 @@
+#!/usr/bin/python
+from shodan import WebAPI
+import re,sys,os
+
+pathname = os.path.dirname(sys.argv[0])
+fullpath = os.path.abspath(pathname)
+keyfilepath = fullpath+'/../shodanapi.key'
+
+with open (keyfilepath, 'r') as apikeyfile:
+	key=apikeyfile.readline().rstrip()
+filter = sys.argv[1]
+api = WebAPI(key)
+
+#get the first page of results
+res = api.search(filter)
+
+#keep track of how many results we have left
+total_pages = (res['total']/50)+1
+page = 1
+
+#outfile = open('tmp.log','w')
+
+try:
+	while(page <= total_pages):
+		#check the matches to see if they fit what we are looking for
+		for r in res['matches']:
+			#if(r['data'].find(filter)>0):
+			#f = 'Checking %s\n' % r['ip']
+			#outfile.write(f)
+                        #outfile.flush()
+			#f = '%s\n' % r['ip']
+			#outfile.write(f)
+                        #outfile.flush()
+			print r['ip']+":"+str(r['port'])	
+		page +=1
+		res = api.search(filter,page)
+except():
+	print 'fail'
+	
+#file.close()
+

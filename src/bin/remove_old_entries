@@ -1,0 +1,34 @@
+#!/bin/bash
+# uso:
+# removeduplicates ficheroafiltrar ficherofiltro ficherodestino
+# lee todas las lineas del fichero 1 que esten tambien presentes en el fichero 2, y guarda el resultado del proceso de filtrado en el fichero 3 
+
+if [ -z "$3" ]; then
+  echo ERROR: Parametros insuficientes
+  echo USO:
+  echo removeduplicates ficheroafiltrar ficherofiltro ficherodestino
+  echo ficheroafiltrar es el fichero que se quiere filtrar
+  echo ficherofiltro es el fichero con las lineas a eliminar de fichero1, si se encuentran
+  echo ficherodestino es el fichero donde guardar los resultados del filtrado 
+  exit 1
+fi
+
+rm -rf filtering.tmp
+touch filtering.tmp
+
+if [ -f "$2" ]; then 
+  while read line
+  do
+      # echo DEBUG: comprobando "$line" en historico...
+      grep -q "$line" $2 || echo "$line" >> filtering.tmp
+  done < $1
+  # mueve el fichero temporal al nombre de archivo dado en el tercer parámetro
+  mv filtering.tmp $3
+else
+  # si el fichero filtro no existe (primera ejecución del modulo, por ejemplo, donde no hay historico anterior de nada)
+  # entonces no se filtra nada porque no hay nada que filtrar
+  # asi que se copia todo el contenido desde el fichero a filtrar hasta el fichero destino "tal cual" 
+  echolog2 "no hay fichero de historial de detectados, nada que filtrar. ¿primera ejecución del modulo?"
+  cp "$1" "$3"
+fi
+exit 0 

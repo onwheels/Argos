@@ -1,0 +1,43 @@
+#!/bin/bash
+# update_database
+# toma todos los archivos logprefix.*.* pertenecientes a la ejecución en curso de argos
+# y los añade a las bases de datos generales correspondientes
+# nombredemodulo.all.tipodebasededatos
+echolog "[DB] Actualizando Bases de datos..."
+# mv lastshodanquery.list shodanquery.debug
+
+# arhivos de base de datos parciales generados en cada ejecucion:
+
+# ${LOGPREFIX}.detected.list (se vuelca a una base de datos de hosts detectados por shodan, 
+# comunitaria para todos los modulos. una vez volcado, no interesa conservar)
+# ${LOGPREFIX}.newdetected.list 
+# ${LOGPREFIX}.cracked.list
+# ${LOGPREFIX}.log (no veo interesante acumularlos en un log general, no es realmente una base de datos, los dejamos sueltos) 
+# ${LOGPREFIX}.exploited.list 
+## este ultimo fichero es opcional, si el modulo contiene un exploit "exploit_check_list" y encuentra host vulnerables,
+## como puede ser el caso del módulo trendnet, que contiene un exploit para las cámaras trendnet.
+
+# recordemos que ${LOGPREFIX} es una suma de MODULEFOLDERNAME + (fecha y hora en que se inició la ejecución)
+
+
+  for LOGSUFFIX in .detected.list .cracked.list .exploited.list; do
+  # en caso de ampliación del sistema de logging, se deberá alterar la lista de arriba
+    if [ -f "${LOGPREFIX}${LOGSUFFIX}" ]; then 
+      echolog2 "UPDATE_DATABASE: ${LOGPREFIX}${LOGSUFFIX} >> ${MODULEFOLDERNAME}.all${LOGSUFFIX}"
+      if [ -z "$DEBUG" ]; then 
+        cat "${LOGPREFIX}${LOGSUFFIX}" >> ${MODULEFOLDERNAME}.all${LOGSUFFIX}
+      else
+	echolog2 "Modo debug. No se actualizan BDD"
+      fi
+    else
+      echolog2 "UPDATE_DATABASE: ${LOGPREFIX}${LOGSUFFIX} no existe o no es archivo"
+    fi
+
+    # ${LOGPREFIX}.newdetected.list (detectados = base de datos comun a todos los modulos, no interesante conservar sueltos)
+    if [ -f "${LOGPREFIX}.newdetected.list" ]; then
+      cat "${LOGPREFIX}.newdetected.list" >> all.detected.list
+      ## rm -rf "${LOGPREFIX}.newdetected.list"
+      ## a titulo historico lo dejamos ahi, pero se podria borrar, siempre que se pasen sus datos al fichero all.detected.list
+    fi
+  done
+

@@ -1,0 +1,31 @@
+#!/bin/bash
+  echolog2 entrando en take_snapshot
+  filename=$(echo "$1" | cut -d'/' -f3- | sed 's/:/_/' | sed 's/@/-/' | sed 's/:/-/').jpg
+  # esto toma una linea de host crackeado, que tiene esta forma:
+  # http://user:pass@1.2.3.4:80/anony/mjpg.cgi
+  # y la deja asi:
+  # user_password-1.2.3.4-puerto.jpg
+  thiscapture="${BASESNAPSHOTSPATH}/${filename}"
+  echolog2 "${1}${SNAPSHOT_URL} --> ${thiscapture}"
+  wget "${1}${SNAPSHOT_URL}" -q -T3 -t1 -O "${thiscapture}"
+  filesize=$(stat -c%s "${thiscapture}")
+  echolog2 capture filesize=$filesize
+  if [ $filesize -eq 0 ]; then
+    rm -f "${thiscapture}"
+    echolog "[Snapshots] Captura de 0 bytes descartada."
+    exit 1
+  else
+    test_is_jpg_file "${thiscapture}" ; result=$?
+    case $result in
+    0)
+      echolog "[Snapshots] Captura OK."
+      exit 0
+    ;;
+    1)
+      # rm -rf $thiscapture
+      echolog "[Snapshots] Captura no JPG descartada."
+      exit 1
+    ;;
+    esac
+  fi
+

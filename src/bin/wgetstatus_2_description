@@ -1,0 +1,29 @@
+#!/bin/bash
+# USO:
+# wgetstatus_2_description STATUS
+# donde STATUS es el exit status que devolvió wget
+case $1 in
+
+0)
+echo "OK";;
+1)
+echo "ERROR GENÉRICO";;
+2)
+echo "ERROR DE PARAMETROS";;
+3)
+echo "ERROR E/S ARCHIVO";;
+4)
+echo "ERROR DE RED";;
+5)
+echo "ERROR EN SSL";;
+6)
+echo "LOGIN/PASS INCORRECTO";;
+7)
+echo "ERROR DE PROTOCOLO";;
+8)
+echo "RESPUESTA ERRÓNEA DEL SERVIDOR";;
+*)
+echo "CODIGO DESCONOCIDO";;
+esac
+
+exit $1

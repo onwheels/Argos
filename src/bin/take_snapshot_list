@@ -1,0 +1,12 @@
+#!/bin/bash
+# USO:
+# take_snapshot_list nombredelistadehostscrackeados
+# el resto de parametros necesarios deberian estar ya en las variables del entorno
+total=$(cat "$1" | wc -l)
+counter=0
+while read linea; do
+  let counter=$counter+1
+  echolog '['$counter'/'$total'] Tomando captura de' $(echo $linea | cut -d"@" -f2)
+  take_snapshot "$linea"
+done < $1
+# echolog [Snapshots] Finalizado

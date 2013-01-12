@@ -1,0 +1,12 @@
+#!/bin/bash
+# interfaz de alto nivel para el uso del script python shodanquery.py
+# USO:
+# shodanquery2file "expresion de busqueda" "fichero donde guardar resultados"
+if [ -z $2 ]; then
+  echo ERROR: parametros insuficientes
+  echo USO:
+  echo shodanquery2file "expresion de busqueda" "fichero donde escribir los resultados"
+  exit 1
+fi
+shodanquery $1 > $2 2> /dev/null 
+exit 0

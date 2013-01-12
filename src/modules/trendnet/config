@@ -1,0 +1,8 @@
+## CONFIG ESPECIFICA DE ESTA MARCA/MODELO DE CAMARA
+MODULENAME='Trendnet'
+FINGERPRINT='realm=netcam'
+HYDRA_URL='/'
+SNAPSHOT_URL='/cgi/jpg/image.cgi'
+DEFAULTLOGIN='admin'
+# WORDLISTFILE='default.dic'
+

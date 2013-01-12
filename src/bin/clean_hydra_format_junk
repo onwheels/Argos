@@ -1,0 +1,29 @@
+#!/bin/bash
+# uso:
+# cleanhydraformatjunk ficherologdehydra fichero_destino
+
+HYDRACLEANTEMPFILE="/tmp/$(basename $0).$$.tmp"
+rm -rf "$2"; touch "$2"
+
+# cadena de proceso del formato:
+#  | cut -d[ -f2- | grep host | sed 's/\]/ /' | tr -s '  ' | cut -d" " -f1,4,6,8
+echolog "[Hydra] [clean_hydra_format_junk] Procesando log"
+cat "$1" | cut -d[ -f2- | grep host | sed 's/\]/ /' | tr -s '  ' | cut -d" " -f1,4,6,8 > "${HYDRACLEANTEMPFILE}"
+
+# formato resultante del procesamiento:
+# puerto ip login pass 
+# === DEBUG ====
+while read line 
+do
+  # camport camip camlogin campass
+  hostport=$(echo $line | cut -d" " -f 1)
+  hostip=$(echo $line | cut -d" " -f 2)
+  hostlogin=$(echo $line | cut -d" " -f 3)
+  hostpass=$(echo $line | cut -d" " -f 4)
+  echo "http://${hostlogin}:${hostpass}@${hostip}:${hostport}" >> "$2"
+ 
+done < "${HYDRACLEANTEMPFILE}"
+
+
+rm -rf "${HYDRACLEANTEMPFILE}"
+

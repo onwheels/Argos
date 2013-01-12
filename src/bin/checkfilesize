@@ -1,0 +1,12 @@
+#!/bin/bash
+if [ ! -f $1 ]; then exit 1; fi 
+FILESIZE=$(stat -c%s "$1")
+echo "$FILESIZE"
+case "$FILESIZE" in
+"0")
+exit 1
+;;
+*)
+exit 0
+;;
+esac

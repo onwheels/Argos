@@ -1,0 +1,7 @@
+hydra [if you have not hydra installed or is an older version]
+
+untar and cd hydra-7.4.2
+configure, make and make install as usual, solving the minimum dependences if needed: 
+openssl idn libpcre libssh 
+at this time we only need http support but future modules could use ssh. the more protocols supported by hydra, the better
+once compiled, if you want to run argos from cron tasks, you'd better copy or symlink /usr/localb/bin/hydra to argos/src/bin/hydra

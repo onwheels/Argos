@@ -1,0 +1,7 @@
+#!/bin/bash
+
+for archivo in $(ls *.list); do
+  echo "Optimizado ${archivo}"
+  tmpvar=$(<${archivo})
+  echo "$tmpvar" | sort -u > "$archivo"
+done 

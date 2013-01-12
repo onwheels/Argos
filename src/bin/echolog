@@ -1,0 +1,17 @@
+#!/bin/bash
+
+OUTPUT="[${MODULENAME}] $@"
+ECHOLOGFILE="${DATAPATH}/argos.log"
+## ECHOLOGFILE="${DATAPATH}/${LOGPREFIX}.log" 
+
+OUTPUTWITHDATETIME="$(date "+%d-%m-%Y %H:%M:%S") ${OUTPUT}"
+echo "${OUTPUTWITHDATETIME}" >> "${ECHOLOGFILE}"
+
+if [ "$TERMINALMODE" == "1" ]; then 
+  echo "${OUTPUT}"
+else
+  echo "${OUTPUTWITHDATETIME}"
+fi
+
+
+

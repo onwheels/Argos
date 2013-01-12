@@ -1,0 +1,3 @@
+#!/bin/bash
+if [ "$DEBUG" == "" ]; then exit; fi
+echo "[DBG] $@"

@@ -1,0 +1,13 @@
+#!/bin/bash
+# USO:
+# emailfile email "asunto" archivodetexto
+
+# email subject
+SUBJECT=$2
+# Email To ?
+EMAIL=$1
+# Email text/message
+EMAILMESSAGE=$3
+# send an email using /bin/mail
+mail -s "$SUBJECT" "$EMAIL" < $EMAILMESSAGE
+

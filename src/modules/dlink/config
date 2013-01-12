@@ -1,0 +1,11 @@
+## CONFIG ESPECIFICA DE ESTA MARCA/MODELO DE CAMARA
+MODULENAME='Dlink'
+FINGERPRINT='realm=DCS-'
+HYDRA_URL='/'
+SNAPSHOT_URL='/dms' 
+# too late, but I noticed that the snapshot url should be diferent for 3 or 4 different models that match this fingerprint
+# in fact, there are some cameras that even have no available internal script for getting jpg captures.
+# the only solution is a lot of time researching and developing some subsets of this module, which is smthg I cannot invest time into
+# so snapshotting will fail 80% of time. sorry!
+DEFAULTLOGIN='admin'
+# WORDLISTFILE='default.dic'

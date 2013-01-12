@@ -1,0 +1,45 @@
+#!/bin/bash
+echolog2 "Entrando en email-logs"
+if [ -z "$EMAILREPORTS" ]; then
+  echolog "[Email] Informes por mail desactivados"
+  return 1
+fi
+
+TEMPEMAILFILE="/tmp/$(basename $0).$$.tmp"
+rm -rf ${TEMPEMAILFILE}
+
+for LOGSUFFIX in .exploited.list .cracked.list; do
+
+  # concatenar en un fichero temporal las bases de datos parciales para esta ejecucion de:
+  # - hosts exploitados (si existe)
+  # - hosts crackeados (si existe)
+  # comprobar si el fichero resultante no es nulo
+  # enviar en tal caso
+
+  if [ -f "${LOGPREFIX}${LOGSUFFIX}" ]; then
+    echolog2 "cat ${LOGPREFIX}${LOGSUFFIX} >> ${TEMPEMAILFILE}"
+    cat "${LOGPREFIX}${LOGSUFFIX}" >> ${TEMPEMAILFILE}
+  fi
+done
+
+# ahora toca comprobar qué tenemos en el fichero temporal
+# si no tenemos nada, no se hace nada
+# en caso contrario se pasa el email a los destinatarios indicados
+# emailfile hará el trabajo duro
+
+  if [ -f ${TEMPEMAILFILE} ]; then
+    FILESIZE=$(stat -c%s ${TEMPEMAILFILE})
+    if [ $FILESIZE != "0" ]; then
+      # partiendo de la idea de que el LOGPREGIX contiene nombredemodulo.fechayhora
+      # podemos apoyarnos un poco en LOGPREFIX para crear el titulo del mail
+      emailtitle="${MODULENAME} - ${DATEANDTIMEFOREMAILREPORTS}"
+      echolog "[Email] Enviando informe a: " ${EMAILREPORTS}
+      emailfile $EMAILREPORTS "${emailtitle}" ${TEMPEMAILFILE}
+      rm -rf ${TEMPEMAILFILE}
+    else
+      echolog "[Email] No hay resultados. No se envia informe"
+      exit 1
+    fi
+  fi
+
+

@@ -1,0 +1,8 @@
+## CONFIG ESPECIFICA DE ESTA MARCA/MODELO DE CAMARA
+MODULENAME='Netwave'
+FINGERPRINT='Netwave IP Camera'
+HYDRA_URL='/videostream.cgi'
+SNAPSHOT_URL='/snapshot.cgi'
+DEFAULTLOGIN='admin'
+# WORDLISTFILE='default.dic'
+
