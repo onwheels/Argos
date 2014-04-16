@@ -3,18 +3,16 @@ Argos
 
 Argos - framework for massive security assessment of worldwide public ip cams
 
-INTRODUCCION
+INTRODUCTION
 ============
 
-este es el codigo fuente de "la maquina" v2.0
+this project started as a simple testing script for the security assesment of trednet ip cams, using shodan as a source for potential targets. 
+but the project grew and now argos is a flexible framework that can be used to detect, security assess and statistically control ip cams from varius manufacturers around the globe.
 
-lo que empezó siendo un simple escaner de vulnerabilidades de camaras de trendnet que utilizaba como fuente de información la base de datos de shodan, ha crecido hasta convertise en un framework (mas o menos) flexible que puede utilizarse para rastrear y comprobar automaticamente, de forma masiva y sin esfuerzo las contraseñas por defecto de la mas amplia variedad de dispositivos (no solo camaras ip) que utilicen autenticación HTTP.
+argos relies on shodan to detect ip cams of a specific model/manufacturer, using a pretty simple plugin system based on bash code files with variables that allow the framework to fingerprint the cams. then argos calls thc hydra internally and parses the response log to test default passwords and finally tests known exploits, if any. 
 
-el framework ha evolucionado para ser menos intrusivo que nunca, rompiendo totalmente su dependencia con el servidor X y con gedit/kwrite, como pasaba en la version 1.
+results of a scanning execution can be sent through email automatically as well as seen on screen.
 
-tambien se ha cambiado la forma de funcionar de todo el framework, de manera que ahora cada escaner no solo es un proceso independiente del resto, sino que se ejecuta constante y repetidamente, con pausas configurables entre barridos, hasta que se le envia la orden de detenerse, por contra de lo que pasaba en la version 1.0, que realizaba un solo barrido, para posteriormente mostrar los resultados de forma intrusiva mostrando gedit. 
-
-ahora los resultados, si los hay, se envian por correo electronico a la dirección especificada, resultando asi un software que se puede utilizar como servicio en segundo plano, 24h al dia, y que no interrumpe nuestras sesiones de trabajo frente al PC. Posteriormente nosotros podemos revisar el correo cuando nos apetezca, en busca de alguna sorpresa que nos haya hecho llegar "la máquina" ;)
 
 COMO FUNCIONA
 =============
@@ -83,25 +81,16 @@ MODO DE USO
 ===========
 
 como deciamos, esta entrega se presenta con tres escanners configurados e independientes.
-cada uno de ellos se puede lanzar llamando a cada uno de los scripts llamados  "launch" que encontraras dentro de cada una de sus carpetas:
+cada uno de ellos se puede lanzar llamando al script llamados  "launch" seguido del nombre del "plugin" que queremos usar:
 
-* dlink/launch
-* trendnet/launch
-* netwave/launch
+* dlink
+* trendnet
+* netwave
 
 no hace falta ejecutarlos con privilegios de root.
 
-los escanners son totalmente independientes los unos de los otros, te enviaran sus resultados por correo de forma separada, y solo comparten configuraciones básicas comunes como por ejemplo la pausa entre barridos.
-
 a propósito de configuraciones básicas comunes, podrás encontrar un pequeño conjunto de variables de configuración en el fichero "config" que reside en esta misma carpeta:
 
-* sleeptime (1800 por defecto)
-  numero de segundos de pause entre consultas a shodan para obtener nuevas "víctimas".   
-  por mi experiencia personal, para los patrones que estamos buscando, parece razonable buscar en shodan cada 1800 segundos.
-  ni mas deprisa porque es poco probable que haya novedades en menos de 30 minutos,
-  ni mas despacio porque seria aburrido.
-  aumenta el valor de este parámetro si te agobia recibir un email cada 30 minutos.
-  
 * sendemail (TRUE por defecto)
   cuando implemente otras formas de hacer llegar los resultados al usuario, podrá desactivarse esta opcion para no tener que utilizar el correo electronico.
   sin embargo en estos momentos es la única opcion para la entrega de informes, y comentar o borrar esta linea supondria la pérdida total en el éter de los resultados.
@@ -117,7 +106,7 @@ a propósito de configuraciones básicas comunes, podrás encontrar un pequeño 
 COMPRENDIENDO LOS RESULTADOS
 ============================
 
-"La máquina" nos enviará un correo en cuyo titulo aparece el nombre del escaner que está generando los resultados, asi com ola fecha y la hora del barrido.
+Argos nos enviará un correo en cuyo titulo aparece el nombre del escaner que está generando los resultados, asi como la fecha y la hora del barrido.
 En el cuerpo del mensaje encontraremos entre una y varias lineas similares con este formato:
 
 http://Usuario:Contraseña@DireccionIP:Puerto
@@ -147,8 +136,7 @@ por "configurado" se entiende que nos hemos tomado la molestia de hacer un traba
    (lo que coloquialmente llamamos "obtener el fingerprinting")
 
  * ruta exacta a un archivo interno del dispositivo (normalmente un archivo CGI o una carpeta determinados) que esté protegido con autenticación HTTP estándar.
-   en la mayoria de casos, la carpeta raíz "/" es la decisión correcta, pero en otros dispositivos no se pide usuario y contraseña nada mas entrar en ellos
-   sino que se primero se presenta ua pantalla, y el password se pide al pulsar un boton o acceder a determinada carpeta/archivo. 
+   en la mayoria de casos, la carpeta raíz "/" es la decisión correcta, pero en otros dispositivos no se pide usuario y contraseña nada mas entrar en ellos, sino que se primero se presenta ua pantalla, y el password se pide al pulsar un boton o acceder a determinada carpeta/archivo. 
    es en estos casos donde debemos hilar algo mas fino, revisar el codigo HTML en busca de respuestas y, cuando las encontramos, cambiar el "/" por cosas como "/videostream.cgi" (ejemplo de las camaras IP de la familia netwave).
 
  * los datos por defecto que trae el dispositivo: usuario y contraseña(s) por defecto.
